@@ -6,14 +6,35 @@ namespace CleanAnalysis
 {
     public class SolutionAnalyzer
     {
-        public async Task AnalyzeSolution(Solution solution)
+        public async Task<Metrics> AnalyzeSolution(Solution solution)
         {
-            var projectFirst = solution.Projects.First();
-            var compilation = await projectFirst.GetCompilationAsync();
-            var visitor = new TypeVisitor();
+            foreach (var project in solution.Projects)
+            {
+                await AnalyzeProject(project);
+            }
+            return default;
+        }
 
+        public async Task<Metrics> AnalyzeProject(Project project)
+        {
+            var compilation = await project.GetCompilationAsync();
+            var abstractness = CalculateAbstractness(compilation);
+            return new Metrics(default, abstractness);
+        }
+
+        private AbstractnessMetric CalculateAbstractness(Compilation compilation)
+        {
+            var visitor = new AbstractnessVisitor();
             compilation.Assembly.Accept(visitor);
-            // TODO: Do analysis on the projects in the loaded solution
+            return new AbstractnessMetric(
+                visitor.Abstractions.Count,
+                visitor.Concretizations.Count);
+        }
+
+        private StabilityMetric CalculateStability(Compilation compilation)
+        {
+
+            return new StabilityMetric();
         }
     }
 }

@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace CleanAnalysis
 {
-    public class TypeVisitor : SymbolVisitor
+    public class AbstractnessVisitor : SymbolVisitor
     {
         public IList<INamedTypeSymbol> Concretizations { get; }
             = new List<INamedTypeSymbol>();
