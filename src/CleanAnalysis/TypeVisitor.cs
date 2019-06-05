@@ -6,51 +6,55 @@ namespace CleanAnalysis
 {
     public class TypeVisitor : SymbolVisitor
     {
-        public IList<INamedTypeSymbol> concretizations = new List<INamedTypeSymbol>();
-        public IList<INamedTypeSymbol> abstractions = new List<INamedTypeSymbol>();
+        public IList<INamedTypeSymbol> Concretizations { get; }
+            = new List<INamedTypeSymbol>();
+
+        public IList<INamedTypeSymbol> Abstractions { get; }
+            = new List<INamedTypeSymbol>();
 
         public override void VisitNamedType(INamedTypeSymbol symbol)
         {
-            base.VisitNamedType(symbol);
             switch (symbol.TypeKind)
             {
                 case TypeKind.Interface:
-                    abstractions.Add(symbol);
+                    Abstractions.Add(symbol);
                     break;
+                case TypeKind.Struct:
                 case TypeKind.Class:
-                    if (symbol.IsAbstract)
-                    {
-                        abstractions.Add(symbol);
-                    }
-                    else
-                    {
-                        concretizations.Add(symbol);
-                    }
-                    break;
-                default:
+                    AnalyzeClass(symbol);
                     break;
             }
+            VisitMembers(symbol);
+        }
 
-            VisitNestedSymbols(symbol);
+        private void AnalyzeClass(INamedTypeSymbol symbol)
+        {
+            if (symbol.IsAbstract)
+            {
+                Abstractions.Add(symbol);
+            }
+            else if (symbol.BaseType?.SpecialType != SpecialType.System_Object
+                || symbol.Interfaces.Any())
+            {
+                Concretizations.Add(symbol);
+            }
         }
 
         public override void VisitAssembly(IAssemblySymbol symbol)
         {
-            base.VisitAssembly(symbol);
             symbol.GlobalNamespace.Accept(this);
         }
 
         public override void VisitNamespace(INamespaceSymbol symbol)
         {
-            base.VisitNamespace(symbol);
-            VisitNestedSymbols(symbol);
+            VisitMembers(symbol);
         }
 
-        private void VisitNestedSymbols(INamespaceOrTypeSymbol symbol)
+        private void VisitMembers(INamespaceOrTypeSymbol symbol)
         {
-            foreach (var nestedSymbol in symbol.GetMembers())
+            foreach (var member in symbol.GetMembers())
             {
-                nestedSymbol.Accept(this);
+                member.Accept(this);
             }
         }
     }
