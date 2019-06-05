@@ -36,7 +36,7 @@ namespace CleanAnalysis
             using (var workspace = MSBuildWorkspace.Create())
             {
                 // Print message for WorkspaceFailed event to help diagnosing project load failures.
-                workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
+                workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.ToString());
 
                 var solutionPath = args[0];
                 Console.WriteLine($"Loading solution '{solutionPath}'");
@@ -46,7 +46,7 @@ namespace CleanAnalysis
 
                 var projectFirst = solution.Projects.First();
                 var compilation = await projectFirst.GetCompilationAsync();
-                var visitor = new Visitor();
+                var visitor = new TypeVisitor();
 
                 compilation.Assembly.Accept(visitor);
 
