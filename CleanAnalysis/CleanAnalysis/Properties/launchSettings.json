@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CleanAnalysis": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\work\\Inventory.Software.Server\\src\\Inventory.Software.Server.sln\""
+    }
+  }
+}
