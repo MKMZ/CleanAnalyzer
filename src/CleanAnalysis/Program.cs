@@ -1,11 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Build.Locator;
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,9 +13,9 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace CleanAnalysis
 {
-    class Program
+    internal static class Program
     {
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
             // Attempt to set the version of MSBuild.
             var visualStudioInstances = MSBuildLocator.QueryVisualStudioInstances().ToArray();
@@ -44,16 +43,8 @@ namespace CleanAnalysis
                 // Attach progress reporter so we print projects as they are loaded.
                 var solution = await workspace.OpenSolutionAsync(solutionPath, new ConsoleProgressReporter());
 
-                var projectFirst = solution.Projects.First();
-                var compilation = await projectFirst.GetCompilationAsync();
-                var visitor = new TypeVisitor();
-
-                compilation.Assembly.Accept(visitor);
-
-
                 Console.WriteLine($"Finished loading solution '{solutionPath}'");
-
-                // TODO: Do analysis on the projects in the loaded solution
+                await new SolutionAnalyzer().AnalyzeSolution(solution);
             }
         }
 
