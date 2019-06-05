@@ -12,6 +12,16 @@ namespace CleanAnalysis
         public IList<INamedTypeSymbol> Abstractions { get; }
             = new List<INamedTypeSymbol>();
 
+        public override void VisitAssembly(IAssemblySymbol symbol)
+        {
+            symbol.GlobalNamespace.Accept(this);
+        }
+
+        public override void VisitNamespace(INamespaceSymbol symbol)
+        {
+            VisitMembers(symbol);
+        }
+
         public override void VisitNamedType(INamedTypeSymbol symbol)
         {
             switch (symbol.TypeKind)
@@ -38,16 +48,6 @@ namespace CleanAnalysis
             {
                 Concretizations.Add(symbol);
             }
-        }
-
-        public override void VisitAssembly(IAssemblySymbol symbol)
-        {
-            symbol.GlobalNamespace.Accept(this);
-        }
-
-        public override void VisitNamespace(INamespaceSymbol symbol)
-        {
-            VisitMembers(symbol);
         }
 
         private void VisitMembers(INamespaceOrTypeSymbol symbol)
