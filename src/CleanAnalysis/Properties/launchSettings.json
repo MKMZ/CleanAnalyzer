@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "CleanAnalysis": {
+    "SmallSolution": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\work\\Inventory.Software.Server\\src\\Inventory.Software.Server.sln\""
+      "commandLineArgs": "../../test/SmallSolution/SmallSolution.sln"
     }
   }
 }
