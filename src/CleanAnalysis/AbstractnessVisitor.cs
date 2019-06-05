@@ -44,7 +44,7 @@ namespace CleanAnalysis
                 Abstractions.Add(symbol);
             }
             else if (symbol.BaseType?.SpecialType != SpecialType.System_Object
-                || symbol.Interfaces.Any())
+                || symbol.Interfaces.Any() || symbol.IsSealed)
             {
                 Concretizations.Add(symbol);
             }

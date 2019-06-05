@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 
@@ -6,26 +8,56 @@ namespace CleanAnalysis
 {
     public class SolutionAnalyzer
     {
-        public async Task<Metrics> AnalyzeSolution(Solution solution)
+        private HashSet<CrossAssemblyReference> CrossAssemblyReferences { get; }
+            = new HashSet<CrossAssemblyReference>();
+        private HashSet<string> SolutionAssemblyNames { get; } = new HashSet<string>();
+        private Dictionary<Project, string> AssemblyNames { get; } = new Dictionary<Project, string>();
+
+        public async Task<Dictionary<Project, Metrics>> AnalyzeSolution(Solution solution)
         {
             foreach (var project in solution.Projects)
             {
-                await AnalyzeProject(project);
+                SolutionAssemblyNames.Add(project.AssemblyName);
+                AssemblyNames[project] = project.AssemblyName;
             }
-            return default;
+            var projectMetrics = new Dictionary<Project, Metrics>();
+            foreach (var project in solution.Projects)
+            {
+                projectMetrics[project] = await AnalyzeProject(project);
+            }
+            RecalculateStability(projectMetrics);
+            return projectMetrics;
+        }
+
+        private void RecalculateStability(Dictionary<Project, Metrics> projectMetrics)
+        {
+            foreach (var project in projectMetrics.Keys)
+            {
+                var targetAssemblyName = AssemblyNames[project];
+                var dependentCount = CrossAssemblyReferences
+                    .Where(xref => xref.TargetAssembly == targetAssemblyName)
+                    .Select(xref => xref.OriginType)
+                    .Distinct()
+                    .Count();
+                var metrics = projectMetrics[project];
+                projectMetrics[project] = new Metrics(
+                    new StabilityMetric(metrics.Stability.Dependencies, dependentCount),
+                    metrics.Abstractness);
+            }
         }
 
         public async Task<Metrics> AnalyzeProject(Project project)
         {
             var compilation = await project.GetCompilationAsync();
             var abstractness = CalculateAbstractness(compilation);
-            return new Metrics(default, abstractness);
+            var stability = CalculateStability(compilation);
+            return new Metrics(stability, abstractness);
         }
 
         private AbstractnessMetric CalculateAbstractness(Compilation compilation)
         {
             var visitor = new AbstractnessVisitor();
-            compilation.Assembly.Accept(visitor);
+            visitor.Visit(compilation.Assembly);
             return new AbstractnessMetric(
                 visitor.Abstractions.Count,
                 visitor.Concretizations.Count);
@@ -33,8 +65,24 @@ namespace CleanAnalysis
 
         private StabilityMetric CalculateStability(Compilation compilation)
         {
-
-            return new StabilityMetric();
+            var visitor = new StabilityVisitor(compilation.Assembly, SolutionAssemblyNames);
+            visitor.Visit(compilation.Assembly);
+            var xAssemblyRefs = visitor.ExternalTypeReferencingTypes
+                .SelectMany(pair => pair.Value.Select(origin => CreateCrossAssemblyReference(origin, pair.Key)));
+            foreach (var xRef in xAssemblyRefs)
+            {
+                CrossAssemblyReferences.Add(xRef);
+            }
+            return new StabilityMetric(
+                visitor.ExternalTypesUsed.Count,
+                default);
         }
+
+        private CrossAssemblyReference CreateCrossAssemblyReference(INamedTypeSymbol origin, INamedTypeSymbol target)
+                => new CrossAssemblyReference(
+                    target.ContainingAssembly.MetadataName,
+                    target.GetFullName(),
+                    origin.ContainingAssembly.MetadataName,
+                    origin.GetFullName());
     }
 }

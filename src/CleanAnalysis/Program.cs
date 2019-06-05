@@ -44,7 +44,22 @@ namespace CleanAnalysis
                 var solution = await workspace.OpenSolutionAsync(solutionPath, new ConsoleProgressReporter());
 
                 Console.WriteLine($"Finished loading solution '{solutionPath}'");
-                await new SolutionAnalyzer().AnalyzeSolution(solution);
+                var results = await new SolutionAnalyzer().AnalyzeSolution(solution);
+
+                Console.WriteLine($"Finished analyzing solution '{solutionPath}'");
+                Console.WriteLine("Results:");
+                foreach (var projectResult in results)
+                {
+                    var project = projectResult.Key;
+                    var metrics = projectResult.Value;
+                    Console.WriteLine($"- {project.Name} ({project.FilePath})");
+                    Console.WriteLine($"    Abstractness {metrics.Abstractness.Coefficient}" +
+                        $"(c: {metrics.Abstractness.Concretizations}," +
+                        $" a: {metrics.Abstractness.Abstractions})");
+                    Console.WriteLine($"    Stability {metrics.Stability.Coefficient}" +
+                        $"(dependencies: {metrics.Stability.Dependencies}," +
+                        $" dependents: {metrics.Stability.Dependents})");
+                }
             }
         }
 
