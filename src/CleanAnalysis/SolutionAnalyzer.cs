@@ -30,6 +30,14 @@ namespace CleanAnalysis
             return projectMetrics;
         }
 
+        public async Task<Metrics> AnalyzeProject(Project project)
+        {
+            var compilation = await project.GetCompilationAsync();
+            var abstractness = CalculateAbstractness(compilation);
+            var stability = PrepareStabilityMetric(compilation);
+            return new Metrics(stability, abstractness);
+        }
+
         private IList<Project> FilterOutTestingProjects(IList<Project> projects)
             => projects.Where(p => !p.Name.Contains("Tests")).ToList();
 
@@ -49,14 +57,6 @@ namespace CleanAnalysis
                     metrics.Abstractness);
             }
             return projectMetrics;
-        }
-
-        public async Task<Metrics> AnalyzeProject(Project project)
-        {
-            var compilation = await project.GetCompilationAsync();
-            var abstractness = CalculateAbstractness(compilation);
-            var stability = PrepareStabilityMetric(compilation);
-            return new Metrics(stability, abstractness);
         }
 
         private AbstractnessMetric CalculateAbstractness(Compilation compilation)
