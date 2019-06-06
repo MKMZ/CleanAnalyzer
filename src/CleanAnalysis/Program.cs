@@ -38,6 +38,7 @@ namespace CleanAnalysis
                 workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.ToString());
 
                 var solutionPath = args[0];
+                var solutionName = (args.Length > 1) ? args[1] : "Default solution";
                 Console.WriteLine($"Loading solution '{solutionPath}'");
 
                 // Attach progress reporter so we print projects as they are loaded.
@@ -50,7 +51,7 @@ namespace CleanAnalysis
                 Console.WriteLine($"Finished analysis");
 
                 Console.WriteLine($"Starting drawing plot...");
-                new StableAbstractionsPlotter().Draw(results);
+                new StableAbstractionsPlotter().Draw(results, solutionName);
                 Console.WriteLine($"Finished drawing plot");
 
                 Console.WriteLine($"Finished analyzing solution '{solutionPath}'");
