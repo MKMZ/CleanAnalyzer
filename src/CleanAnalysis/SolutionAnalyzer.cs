@@ -15,19 +15,23 @@ namespace CleanAnalysis
 
         public async Task<Dictionary<Project, Metrics>> AnalyzeSolution(Solution solution)
         {
-            foreach (var project in solution.Projects)
+            var projects = FilterOutTestingProjects(solution.Projects.ToList());
+            foreach (var project in projects)
             {
                 SolutionAssemblyNames.Add(project.AssemblyName);
                 AssemblyNames[project] = project.AssemblyName;
             }
             var projectMetrics = new Dictionary<Project, Metrics>();
-            foreach (var project in solution.Projects)
+            foreach (var project in projects)
             {
                 projectMetrics[project] = await AnalyzeProject(project);
             }
             projectMetrics = CalculateStability(projectMetrics);
             return projectMetrics;
         }
+
+        private IList<Project> FilterOutTestingProjects(IList<Project> projects)
+            => projects.Where(p => !p.Name.Contains("Tests")).ToList();
 
         private Dictionary<Project, Metrics> CalculateStability(Dictionary<Project, Metrics> projectMetrics)
         {
