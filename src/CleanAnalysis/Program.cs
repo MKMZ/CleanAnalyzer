@@ -54,10 +54,10 @@ namespace CleanAnalysis
                     var metrics = projectResult.Value;
                     Console.WriteLine($"- {project.Name} ({project.FilePath})");
                     Console.WriteLine($"    Abstractness {metrics.Abstractness.Coefficient}" +
-                        $"(c: {metrics.Abstractness.Concretizations}," +
+                        $" (c: {metrics.Abstractness.Concretizations}," +
                         $" a: {metrics.Abstractness.Abstractions})");
                     Console.WriteLine($"    Stability {metrics.Stability.Coefficient}" +
-                        $"(dependencies: {metrics.Stability.Dependencies}," +
+                        $" (dependencies: {metrics.Stability.Dependencies}," +
                         $" dependents: {metrics.Stability.Dependents})");
                 }
             }

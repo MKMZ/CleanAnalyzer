@@ -35,8 +35,7 @@ namespace CleanAnalysis
 
         private Dictionary<Project, Metrics> CalculateStability(Dictionary<Project, Metrics> projectMetrics)
         {
-            var projects = projectMetrics.Keys.ToList();
-            foreach (var project in projects)
+            foreach (var project in projectMetrics.Keys.ToList())
             {
                 var targetAssemblyName = AssemblyNames[project];
                 var dependentCount = CrossAssemblyReferences

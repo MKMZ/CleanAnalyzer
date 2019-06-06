@@ -14,11 +14,8 @@ namespace CleanAnalysis
 
         public StabilityVisitor(IAssemblySymbol assembly, HashSet<string> solutionAssemblyNames)
         {
-            Assembly = assembly;
             CoreUsageVisitor = new UsageVisitor(assembly, solutionAssemblyNames);
         }
-
-        public IAssemblySymbol Assembly { get; }
 
         public override void VisitAssembly(IAssemblySymbol symbol)
         {
@@ -32,10 +29,12 @@ namespace CleanAnalysis
 
         public override void VisitNamedType(INamedTypeSymbol symbol)
         {
+            CoreUsageVisitor.TypeStack.Push(symbol);
             VisitAll(symbol.GetMembers());
             AnalyzeUsedTypes(symbol.TypeArguments);
             AnalyzeUsedTypes(symbol.Interfaces);
             AnalyzeUsedType(symbol.BaseType);
+            CoreUsageVisitor.TypeStack.Pop();
         }
 
         public override void VisitMethod(IMethodSymbol symbol)
@@ -100,6 +99,8 @@ namespace CleanAnalysis
         {
             public ISet<INamedTypeSymbol> ExternalTypesUsed { get; } = new HashSet<INamedTypeSymbol>();
 
+            public Stack<INamedTypeSymbol> TypeStack { get; } = new Stack<INamedTypeSymbol>();
+
             /// <summary>
             /// External types are keys, and a set of types that referenced given key is the value.
             /// </summary>
@@ -107,6 +108,7 @@ namespace CleanAnalysis
             = new Dictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>>();
 
             public IAssemblySymbol Assembly { get; }
+
             public HashSet<string> SolutionAssemblyNames { get; }
 
             public UsageVisitor(IAssemblySymbol assembly, HashSet<string> solutionAssemblyNames)
@@ -122,6 +124,14 @@ namespace CleanAnalysis
 
             public override void VisitNamedType(INamedTypeSymbol symbol)
             {
+                foreach (var typeArg in symbol.TypeArguments)
+                {
+                    Visit(typeArg);
+                }
+                if (symbol.TypeKind == TypeKind.Error)
+                {
+                    return;
+                }
                 if (symbol.SpecialType != SpecialType.None)
                 {
                     return;
@@ -142,10 +152,10 @@ namespace CleanAnalysis
                         return;
                     }
                     ExternalTypesUsed.Add(symbol);
-                    if (symbol.ContainingType != null)
+                    if (TypeStack.Count > 0)
                     {
                         var dependentSet = GetDependentsSet();
-                        dependentSet.Add(symbol.ContainingType);
+                        dependentSet.Add(TypeStack.Peek());
                     }
                 }
                 HashSet<INamedTypeSymbol> GetDependentsSet()
