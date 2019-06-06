@@ -44,7 +44,14 @@ namespace CleanAnalysis
                 var solution = await workspace.OpenSolutionAsync(solutionPath, new ConsoleProgressReporter());
 
                 Console.WriteLine($"Finished loading solution '{solutionPath}'");
+
+                Console.WriteLine($"Starting analysis...");
                 var results = await new SolutionAnalyzer().AnalyzeSolution(solution);
+                Console.WriteLine($"Finished analysis");
+
+                Console.WriteLine($"Starting drawing plot...");
+                new StableAbstractionsPlotter().Draw(results);
+                Console.WriteLine($"Finished drawing plot");
 
                 Console.WriteLine($"Finished analyzing solution '{solutionPath}'");
                 Console.WriteLine("Results:");
