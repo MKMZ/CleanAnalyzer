@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using Microsoft.CodeAnalysis;
 using OxyPlot;
@@ -11,7 +12,7 @@ namespace CleanAnalysis
     public class StableAbstractionsPlotter
     {
 
-        public void Draw(Dictionary<Project, Metrics> metricsDictionary, string solutionName)
+        public void Draw(ImmutableDictionary<Project, Metrics> metricsDictionary, string solutionName)
         {
             var plotModel = new PlotModel();
             var scatterSeries = new ScatterSeries {

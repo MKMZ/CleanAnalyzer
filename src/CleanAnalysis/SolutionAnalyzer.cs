@@ -120,7 +120,7 @@ namespace CleanAnalysis
                         var dependencyProject = project.Solution.GetProject(dependencyRef.ProjectId);
                         var dependencyMetric = projectMetrics[dependencyProject];
                         var dependencyStability = dependencyMetric.Stability.Coefficient;
-                        if (stability < dependencyStability)
+                        if (stability > dependencyStability)
                         {
                             yield return PackagingPrincipleDiagnostic.Create(
                                 "PPD01",

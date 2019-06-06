@@ -51,7 +51,7 @@ namespace CleanAnalysis
                 Console.WriteLine($"Finished analysis");
 
                 Console.WriteLine($"Starting drawing plot...");
-                new StableAbstractionsPlotter().Draw(results, solutionName);
+                new StableAbstractionsPlotter().Draw(results.ProjectMetrics, solutionName);
                 Console.WriteLine($"Finished drawing plot");
 
                 Console.WriteLine($"Finished analyzing solution '{solutionPath}'");
@@ -68,10 +68,17 @@ namespace CleanAnalysis
                         $" (dependencies: {metrics.Stability.Dependencies}," +
                         $" dependents: {metrics.Stability.Dependents})");
                 }
-                Console.WriteLine("Diagnostics:");
-                foreach (var diagnostic in results.Diagnostics)
+                if (results.Diagnostics.Any())
                 {
-                    Console.WriteLine($"- {diagnostic}");
+                    Console.WriteLine("Diagnostics:");
+                    foreach (var diagnostic in results.Diagnostics)
+                    {
+                        Console.WriteLine($"- {diagnostic}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("No diagnostics reported. Project adheres to Packaging Principles");
                 }
             }
         }
