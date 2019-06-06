@@ -1,36 +1,56 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using MoreLinq;
 
 namespace CleanAnalysis
 {
     public class SolutionAnalyzer
     {
+        public SolutionAnalyzer(Solution solution, double mainSequenceDistanceAllowance = 0.7)
+        {
+            Solution = solution;
+            MainSequenceDistanceAllowance = mainSequenceDistanceAllowance;
+        }
+
         private HashSet<CrossAssemblyReference> CrossAssemblyReferences { get; }
             = new HashSet<CrossAssemblyReference>();
-        private HashSet<string> SolutionAssemblyNames { get; } = new HashSet<string>();
-        private Dictionary<Project, string> AssemblyNames { get; } = new Dictionary<Project, string>();
 
-        public async Task<Dictionary<Project, Metrics>> AnalyzeSolution(Solution solution)
+        private HashSet<string> SolutionAssemblyNames { get; } = new HashSet<string>();
+
+        public Solution Solution { get; }
+
+        public double MainSequenceDistanceAllowance { get; }
+
+        public async Task<SolutionAnalysisResult> AnalyzeSolution()
         {
-            var projects = FilterOutTestingProjects(solution.Projects.ToList());
+            var projects = FilterOutTestingProjects(Solution.Projects.ToList());
             foreach (var project in projects)
             {
                 SolutionAssemblyNames.Add(project.AssemblyName);
-                AssemblyNames[project] = project.AssemblyName;
             }
             var projectMetrics = new Dictionary<Project, Metrics>();
             foreach (var project in projects)
             {
-                projectMetrics[project] = await AnalyzeProject(project);
+                projectMetrics[project] = await CalculateProjectMetrics(project);
             }
-            projectMetrics = CalculateStability(projectMetrics);
-            return projectMetrics;
+            foreach (var project in projects)
+            {
+                projectMetrics[project] = UpdateStabilityDependents(
+                    project.AssemblyName,
+                    projectMetrics[project]);
+            }
+            var projectMetrics1 = projectMetrics.ToImmutableDictionary();
+            var diagnostics = CreateDiagnostics(projectMetrics1);
+            return new SolutionAnalysisResult(
+                projectMetrics1,
+                diagnostics);
         }
 
-        public async Task<Metrics> AnalyzeProject(Project project)
+        private async Task<Metrics> CalculateProjectMetrics(Project project)
         {
             var compilation = await project.GetCompilationAsync();
             var abstractness = CalculateAbstractness(compilation);
@@ -38,25 +58,18 @@ namespace CleanAnalysis
             return new Metrics(stability, abstractness);
         }
 
-        private IList<Project> FilterOutTestingProjects(IList<Project> projects)
-            => projects.Where(p => !p.Name.Contains("Tests")).ToList();
+        private ImmutableArray<Project> FilterOutTestingProjects(IList<Project> projects)
+            => projects.Where(p => !p.Name.Contains("Tests")).ToImmutableArray();
 
-        private Dictionary<Project, Metrics> CalculateStability(Dictionary<Project, Metrics> projectMetrics)
+        private Metrics UpdateStabilityDependents(string targetAssemblyName, Metrics metrics)
         {
-            foreach (var project in projectMetrics.Keys.ToList())
-            {
-                var targetAssemblyName = AssemblyNames[project];
-                var dependentCount = CrossAssemblyReferences
-                    .Where(xref => xref.TargetAssembly == targetAssemblyName)
-                    .Select(xref => xref.OriginType)
-                    .Distinct()
-                    .Count();
-                var metrics = projectMetrics[project];
-                projectMetrics[project] = new Metrics(
-                    new StabilityMetric(metrics.Stability.Dependencies, dependentCount),
-                    metrics.Abstractness);
-            }
-            return projectMetrics;
+            var dependentCount = CrossAssemblyReferences
+                .Where(xref => xref.TargetAssembly == targetAssemblyName)
+                .DistinctBy(xref => (xref.OriginType, xref.OriginAssembly))
+                .Count();
+            return new Metrics(
+                new StabilityMetric(metrics.Stability.Dependencies, dependentCount),
+                metrics.Abstractness);
         }
 
         private AbstractnessMetric CalculateAbstractness(Compilation compilation)
@@ -89,5 +102,58 @@ namespace CleanAnalysis
                     target.GetFullName(),
                     origin.ContainingAssembly.MetadataName,
                     origin.GetFullName());
+
+        private ImmutableArray<PackagingPrincipleDiagnostic> CreateDiagnostics(
+            ImmutableDictionary<Project, Metrics> projectMetrics)
+        {
+            return Inner().ToImmutableArray();
+
+            IEnumerable<PackagingPrincipleDiagnostic> Inner()
+            {
+                foreach (var project in projectMetrics.Keys)
+                {
+                    var metric = projectMetrics[project];
+                    var abstractness = metric.Abstractness.Coefficient;
+                    var stability = metric.Stability.Coefficient;
+                    foreach (var dependencyRef in project.ProjectReferences)
+                    {
+                        var dependencyProject = project.Solution.GetProject(dependencyRef.ProjectId);
+                        var dependencyMetric = projectMetrics[dependencyProject];
+                        var dependencyStability = dependencyMetric.Stability.Coefficient;
+                        if (stability < dependencyStability)
+                        {
+                            yield return PackagingPrincipleDiagnostic.Create(
+                                "PPD01",
+                                "Project '{0}' depends on a less stable project '{1}'. ({2}->{3})",
+                                project.Name,
+                                dependencyProject.Name,
+                                stability,
+                                dependencyStability);
+                        }
+                    }
+                    if (metric.MainSequenceDistance > MainSequenceDistanceAllowance)
+                    {
+                        if (abstractness > stability)
+                        {
+                            // useless zone
+                            yield return PackagingPrincipleDiagnostic.Create(
+                                "PPD02",
+                                "Project '{0}' belongs to the useless zone (more abstract than stable). MSD={1}",
+                                project.Name,
+                                metric.MainSequenceDistance);
+                        }
+                        else
+                        {
+                            // pain zone
+                            yield return PackagingPrincipleDiagnostic.Create(
+                                "PPD03",
+                                "Project '{0}' belongs to the pain zone (more stable than abstract). MSD={1}",
+                                project.Name,
+                                metric.MainSequenceDistance);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
