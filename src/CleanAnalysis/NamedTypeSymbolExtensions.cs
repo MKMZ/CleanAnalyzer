@@ -31,8 +31,9 @@ namespace CleanAnalysis
                     case SymbolDisplayPartKind.ClassName:
                     case SymbolDisplayPartKind.InterfaceName:
                     case SymbolDisplayPartKind.StructName:
-                    case SymbolDisplayPartKind.NamespaceName:
                     case SymbolDisplayPartKind.EnumName:
+                    case SymbolDisplayPartKind.DelegateName:
+                    case SymbolDisplayPartKind.NamespaceName:
                         builder.Append(part.Symbol.MetadataName);
                         break;
                     case SymbolDisplayPartKind.Punctuation when part.ToString() == ".":
