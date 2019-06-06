@@ -17,7 +17,6 @@ namespace CleanAnalysis
         {
             var plotModel = new PlotModel();
             var scatterSeries = new ScatterSeries {
-                Tag = "{Tag}",
                 TextColor = OxyColor.FromRgb(0, 0, 255)
             };
             var mainSequenceSeries = new FunctionSeries(x => x, 0, 1, 0.00001, "The Main Sequence")
@@ -40,12 +39,12 @@ namespace CleanAnalysis
 
             plotModel.Annotations.Add(new TextAnnotation
             {
-                Text = "Zone Of Useless Boundary",
+                Text = "Zone Of Uselessness",
                 TextPosition = new DataPoint(0.1, 0.9)
             });
             plotModel.Annotations.Add(new TextAnnotation
             {
-                Text = "Zone Of Pain Boundary",
+                Text = "Zone Of Pain",
                 TextPosition = new DataPoint(0.9, 0.1)
             });
 
@@ -73,8 +72,15 @@ namespace CleanAnalysis
             foreach (var project in metricsDictionary.Keys)
             {
                 var metrics = metricsDictionary[project];
-
-                scatterSeries.Points.Add(new ScatterPoint(metrics.Stability.Coefficient, metrics.Abstractness.Coefficient, tag: project.Name));
+                var stability = metrics.Stability.Coefficient;
+                var abstractness = metrics.Abstractness.Coefficient;
+                scatterSeries.Points.Add(
+                    new ScatterPoint(stability, abstractness, tag: project.Name));
+                plotModel.Annotations.Add(new TextAnnotation
+                {
+                    Text = project.Name,
+                    TextPosition = new DataPoint(stability + 0.025, abstractness)
+                });
             }
 
             using (var stream = File.Create($"{solutionName} - {DateTime.UtcNow.ToString("yyyyMMddTHHmmss")}.pdf"))

@@ -38,21 +38,25 @@ namespace CleanAnalysis
                 workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.ToString());
 
                 var solutionPath = args[0];
-                var solutionName = (args.Length > 1) ? args[1] : "Default solution";
                 Console.WriteLine($"Loading solution '{solutionPath}'");
 
                 // Attach progress reporter so we print projects as they are loaded.
                 var solution = await workspace.OpenSolutionAsync(solutionPath, new ConsoleProgressReporter());
-
                 Console.WriteLine($"Finished loading solution '{solutionPath}'");
 
-                Console.WriteLine($"Starting analysis...");
-                var results = await new SolutionAnalyzer(solution).AnalyzeSolution();
-                Console.WriteLine($"Finished analysis");
+                var solutionName = (args.Length > 1)
+                    ? args[1]
+                    : solution.FilePath is null
+                        ? "Default solution"
+                        : Path.GetFileName(solution.FilePath);
 
-                Console.WriteLine($"Starting drawing plot...");
+                Console.WriteLine("Starting analysis...");
+                var results = await new SolutionAnalyzer(solution).AnalyzeSolution();
+                Console.WriteLine("Finished analysis");
+
+                Console.WriteLine("Starting drawing plot...");
                 new StableAbstractionsPlotter().Draw(results.ProjectMetrics, solutionName);
-                Console.WriteLine($"Finished drawing plot");
+                Console.WriteLine("Finished drawing plot");
 
                 Console.WriteLine($"Finished analyzing solution '{solutionPath}'");
                 Console.WriteLine("Results:");
@@ -78,7 +82,7 @@ namespace CleanAnalysis
                 }
                 else
                 {
-                    Console.WriteLine("No diagnostics reported. Project adheres to Packaging Principles");
+                    Console.WriteLine("No diagnostics reported. Project adheres to Packaging Principles.");
                 }
             }
         }
