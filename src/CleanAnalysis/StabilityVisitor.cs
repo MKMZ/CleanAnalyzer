@@ -97,6 +97,8 @@ namespace CleanAnalysis
 
         private class UsageVisitor : SymbolVisitor
         {
+            private HashSet<INamedTypeSymbol> AnalyzedNamedTypes = new HashSet<INamedTypeSymbol>();
+
             public ISet<INamedTypeSymbol> ExternalTypesUsed { get; } = new HashSet<INamedTypeSymbol>();
 
             public Stack<INamedTypeSymbol> TypeStack { get; } = new Stack<INamedTypeSymbol>();
@@ -124,23 +126,21 @@ namespace CleanAnalysis
 
             public override void VisitNamedType(INamedTypeSymbol symbol)
             {
+                if (!AnalyzedNamedTypes.Add(symbol))
+                {
+                    return;
+                }
                 foreach (var typeArg in symbol.TypeArguments)
                 {
                     Visit(typeArg);
                 }
-                if (symbol.TypeKind == TypeKind.Error)
-                {
-                    return;
-                }
-                if (symbol.SpecialType != SpecialType.None)
-                {
-                    return;
-                }
-                if (symbol.IsImplicitlyDeclared)
-                {
-                    return;
-                }
-                if (symbol.ContainingAssembly == null)
+                AnalyzeUsage(symbol);
+                AnalyzedNamedTypes.Remove(symbol);
+            }
+
+            private void AnalyzeUsage(INamedTypeSymbol symbol)
+            {
+                if (!ValidateUsage(symbol))
                 {
                     return;
                 }
@@ -154,23 +154,17 @@ namespace CleanAnalysis
                     ExternalTypesUsed.Add(symbol);
                     if (TypeStack.Count > 0)
                     {
-                        var dependentSet = GetDependentsSet();
+                        var dependentSet = GetDependentsSet(symbol);
                         dependentSet.Add(TypeStack.Peek());
                     }
                 }
-                HashSet<INamedTypeSymbol> GetDependentsSet()
-                {
-                    if (ExternalTypeReferencingTypes.TryGetValue(symbol, out var existingSet))
-                    {
-                        return existingSet;
-                    }
-                    else
-                    {
-                        var dependentSet = new HashSet<INamedTypeSymbol>();
-                        return ExternalTypeReferencingTypes[symbol] = dependentSet;
-                    }
-                }
             }
+
+            private bool ValidateUsage(INamedTypeSymbol symbol)
+                => symbol.TypeKind != TypeKind.Error 
+                && symbol.SpecialType == SpecialType.None 
+                && !symbol.IsImplicitlyDeclared 
+                && symbol.ContainingAssembly != null;
 
             public override void VisitPointerType(IPointerTypeSymbol symbol)
             {
@@ -182,6 +176,19 @@ namespace CleanAnalysis
                 foreach(var constraint in symbol.ConstraintTypes)
                 {
                     Visit(constraint);
+                }
+            }
+
+            private HashSet<INamedTypeSymbol> GetDependentsSet(INamedTypeSymbol symbol)
+            {
+                if (ExternalTypeReferencingTypes.TryGetValue(symbol, out var existingSet))
+                {
+                    return existingSet;
+                }
+                else
+                {
+                    var dependentSet = new HashSet<INamedTypeSymbol>();
+                    return ExternalTypeReferencingTypes[symbol] = dependentSet;
                 }
             }
         }
