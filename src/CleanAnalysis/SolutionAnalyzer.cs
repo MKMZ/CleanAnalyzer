@@ -25,11 +25,11 @@ namespace CleanAnalysis
             {
                 projectMetrics[project] = await AnalyzeProject(project);
             }
-            RecalculateStability(projectMetrics);
+            projectMetrics = CalculateStability(projectMetrics);
             return projectMetrics;
         }
 
-        private void RecalculateStability(Dictionary<Project, Metrics> projectMetrics)
+        private Dictionary<Project, Metrics> CalculateStability(Dictionary<Project, Metrics> projectMetrics)
         {
             var projects = projectMetrics.Keys.ToList();
             foreach (var project in projects)
@@ -45,13 +45,14 @@ namespace CleanAnalysis
                     new StabilityMetric(metrics.Stability.Dependencies, dependentCount),
                     metrics.Abstractness);
             }
+            return projectMetrics;
         }
 
         public async Task<Metrics> AnalyzeProject(Project project)
         {
             var compilation = await project.GetCompilationAsync();
             var abstractness = CalculateAbstractness(compilation);
-            var stability = CalculateStability(compilation);
+            var stability = PrepareStabilityMetric(compilation);
             return new Metrics(stability, abstractness);
         }
 
@@ -64,7 +65,7 @@ namespace CleanAnalysis
                 visitor.Concretizations.Count);
         }
 
-        private StabilityMetric CalculateStability(Compilation compilation)
+        private StabilityMetric PrepareStabilityMetric(Compilation compilation)
         {
             var visitor = new StabilityVisitor(compilation.Assembly, SolutionAssemblyNames);
             visitor.Visit(compilation.Assembly);
