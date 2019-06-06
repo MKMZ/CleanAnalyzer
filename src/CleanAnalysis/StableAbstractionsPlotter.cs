@@ -17,7 +17,8 @@ namespace CleanAnalysis
         {
             var plotModel = new PlotModel();
             var scatterSeries = new ScatterSeries {
-                TextColor = OxyColor.FromRgb(0, 0, 255)
+                TextColor = OxyColor.FromRgb(0, 0, 255),
+                MarkerType = MarkerType.Circle
             };
             var mainSequenceSeries = new FunctionSeries(x => x, 0, 1, 0.00001, "The Main Sequence")
             {
@@ -79,7 +80,9 @@ namespace CleanAnalysis
                 plotModel.Annotations.Add(new TextAnnotation
                 {
                     Text = project.Name,
-                    TextPosition = new DataPoint(stability + 0.025, abstractness)
+                    TextPosition = new DataPoint(stability + 0.025, abstractness),
+                    FontSize = 12,
+                    StrokeThickness = 0
                 });
             }
 
