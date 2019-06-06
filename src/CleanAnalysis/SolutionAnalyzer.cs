@@ -25,8 +25,11 @@ namespace CleanAnalysis
 
         public double MainSequenceDistanceAllowance { get; }
 
-        public async Task<SolutionAnalysisResult> AnalyzeSolution()
+        public async Task<SolutionAnalysisResult> AnalyzeSolution(
+            IProgress<SolutionAnalysisDiagnostic> progress = null)
         {
+            progress?.Report("Analysis started");
+            progress?.Report("Creating analyzed projects list");
             var projects = FilterOutTestingProjects(Solution.Projects.ToList());
             foreach (var project in projects)
             {
@@ -35,18 +38,21 @@ namespace CleanAnalysis
             var projectMetrics = new Dictionary<Project, Metrics>();
             foreach (var project in projects)
             {
+                progress?.Report($"Calculating metrics for project {project.Name}");
                 projectMetrics[project] = await CalculateProjectMetrics(project);
             }
             foreach (var project in projects)
             {
+                progress?.Report($"Updating stability metric for project {project.Name}");
                 projectMetrics[project] = UpdateStabilityDependents(
                     project.AssemblyName,
                     projectMetrics[project]);
             }
-            var projectMetrics1 = projectMetrics.ToImmutableDictionary();
-            var diagnostics = CreateDiagnostics(projectMetrics1);
+            progress?.Report("Generating diagnostics");
+            var diagnostics = CreateDiagnostics(projectMetrics.ToImmutableDictionary());
+            progress?.Report("Analysis finished");
             return new SolutionAnalysisResult(
-                projectMetrics1,
+                projectMetrics.ToImmutableDictionary(),
                 diagnostics);
         }
 

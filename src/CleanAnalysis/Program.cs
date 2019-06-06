@@ -38,8 +38,8 @@ namespace CleanAnalysis
                 workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.ToString());
 
                 var solutionPath = args[0];
-                Console.WriteLine($"Loading solution '{solutionPath}'");
 
+                Console.WriteLine($"Loading solution '{solutionPath}'");
                 // Attach progress reporter so we print projects as they are loaded.
                 var solution = await workspace.OpenSolutionAsync(solutionPath, new ConsoleProgressReporter());
                 Console.WriteLine($"Finished loading solution '{solutionPath}'");
@@ -50,15 +50,13 @@ namespace CleanAnalysis
                         ? "Default solution"
                         : Path.GetFileName(solution.FilePath);
 
-                Console.WriteLine("Starting analysis...");
-                var results = await new SolutionAnalyzer(solution).AnalyzeSolution();
-                Console.WriteLine("Finished analysis");
+                var results = await new SolutionAnalyzer(solution)
+                    .AnalyzeSolution(new ConsoleProgressReporter());
 
-                Console.WriteLine("Starting drawing plot...");
+                Console.Write("Starting drawing plot... ");
                 new StableAbstractionsPlotter().Draw(results.ProjectMetrics, solutionName);
-                Console.WriteLine("Finished drawing plot");
+                Console.WriteLine("Done");
 
-                Console.WriteLine($"Finished analyzing solution '{solutionPath}'");
                 Console.WriteLine("Results:");
                 foreach (var projectMetrics in results.ProjectMetrics)
                 {
@@ -111,7 +109,8 @@ namespace CleanAnalysis
             }
         }
 
-        private class ConsoleProgressReporter : IProgress<ProjectLoadProgress>
+        private class ConsoleProgressReporter
+            : IProgress<ProjectLoadProgress>, IProgress<SolutionAnalysisDiagnostic>
         {
             public void Report(ProjectLoadProgress loadProgress)
             {
@@ -122,6 +121,11 @@ namespace CleanAnalysis
                 }
 
                 Console.WriteLine($"{loadProgress.Operation,-15} {loadProgress.ElapsedTime,-15:m\\:ss\\.fffffff} {projectDisplay}");
+            }
+
+            public void Report(SolutionAnalysisDiagnostic value)
+            {
+                Console.WriteLine($"  {value.Message}");
             }
         }
     }
