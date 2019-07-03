@@ -13,7 +13,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace CleanAnalysis
 {
-    internal static class Program
+    internal static partial class Program
     {
         private static async Task Main(string[] args)
         {
@@ -40,8 +40,10 @@ namespace CleanAnalysis
                 var solutionPath = args[0];
 
                 Console.WriteLine($"Loading solution '{solutionPath}'");
+                var consoleProgressReporter = new ConsoleProgressReporter();
+
                 // Attach progress reporter so we print projects as they are loaded.
-                var solution = await workspace.OpenSolutionAsync(solutionPath, new ConsoleProgressReporter());
+                var solution = await workspace.OpenSolutionAsync(solutionPath, consoleProgressReporter);
                 Console.WriteLine($"Finished loading solution '{solutionPath}'");
 
                 var solutionName = (args.Length > 1)
@@ -50,8 +52,11 @@ namespace CleanAnalysis
                         ? "Default solution"
                         : Path.GetFileName(solution.FilePath);
 
-                var results = await new SolutionAnalyzer(solution)
-                    .AnalyzeSolution(new ConsoleProgressReporter());
+                Console.Write("Starting the analysis... ");
+                var results =
+                    await new AnalysisRunner(consoleProgressReporter, new DataGatherer(consoleProgressReporter), new AbstractnessCalculator(), new StabilityCalculator())
+                    .Run(new string[] { solutionPath });
+                Console.Write("Finished the analysis.");
 
                 Console.Write("Starting drawing plot... ");
                 new StableAbstractionsPlotter().Draw(results.ProjectMetrics, solutionName);
@@ -60,8 +65,8 @@ namespace CleanAnalysis
                 Console.WriteLine("Results:");
                 foreach (var projectMetrics in results.ProjectMetrics)
                 {
-                    var project = projectMetrics.Key;
-                    var metrics = projectMetrics.Value;
+                    var project = projectMetrics.Project;
+                    var metrics = projectMetrics.Metrics;
                     Console.WriteLine($"- {project.Name} ({project.FilePath})");
                     Console.WriteLine($"    Abstractness {metrics.Abstractness.Coefficient}" +
                         $" (c: {metrics.Abstractness.Concretizations}," +
@@ -106,26 +111,6 @@ namespace CleanAnalysis
                     return visualStudioInstances[instanceNumber - 1];
                 }
                 Console.WriteLine("Input not accepted, try again.");
-            }
-        }
-
-        private class ConsoleProgressReporter
-            : IProgress<ProjectLoadProgress>, IProgress<SolutionAnalysisDiagnostic>
-        {
-            public void Report(ProjectLoadProgress loadProgress)
-            {
-                var projectDisplay = Path.GetFileName(loadProgress.FilePath);
-                if (loadProgress.TargetFramework != null)
-                {
-                    projectDisplay += $" ({loadProgress.TargetFramework})";
-                }
-
-                Console.WriteLine($"{loadProgress.Operation,-15} {loadProgress.ElapsedTime,-15:m\\:ss\\.fffffff} {projectDisplay}");
-            }
-
-            public void Report(SolutionAnalysisDiagnostic value)
-            {
-                Console.WriteLine($"  {value.Message}");
             }
         }
     }

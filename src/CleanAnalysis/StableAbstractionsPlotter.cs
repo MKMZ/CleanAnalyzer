@@ -13,7 +13,7 @@ namespace CleanAnalysis
     public class StableAbstractionsPlotter
     {
 
-        public void Draw(ImmutableDictionary<Project, Metrics> metricsDictionary, string solutionName, double MainSequenceDistanceAllowance = 0.7)
+        public void Draw(IImmutableList<ProjectMetrics> projectMetrics, string solutionName, double MainSequenceDistanceAllowance = 0.7)
         {
             var plotModel = new PlotModel();
             var scatterSeries = new ScatterSeries {
@@ -70,16 +70,15 @@ namespace CleanAnalysis
 
             plotModel.Title = $"{solutionName} - {DateTime.UtcNow}";
 
-            foreach (var project in metricsDictionary.Keys)
+            foreach (var projectMetric in projectMetrics)
             {
-                var metrics = metricsDictionary[project];
-                var stability = metrics.Stability.Coefficient;
-                var abstractness = metrics.Abstractness.Coefficient;
+                var stability = projectMetric.Metrics.Stability.Coefficient;
+                var abstractness = projectMetric.Metrics.Abstractness.Coefficient;
                 scatterSeries.Points.Add(
-                    new ScatterPoint(stability, abstractness, tag: project.Name));
+                    new ScatterPoint(stability, abstractness, tag: projectMetric.Project.Name));
                 plotModel.Annotations.Add(new TextAnnotation
                 {
-                    Text = project.Name,
+                    Text = projectMetric.Project.Name,
                     TextPosition = new DataPoint(stability + 0.025, abstractness),
                     FontSize = 12,
                     StrokeThickness = 0

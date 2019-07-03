@@ -19,5 +19,11 @@
                 return double.IsNaN(coeff) ? 1 : coeff;
             }
         }
+
+        internal StabilityMetric IncreaseDependencies()
+            => new StabilityMetric(Dependencies + 1, Dependents);
+
+        internal StabilityMetric IncreaseDependents()
+            => new StabilityMetric(Dependencies, Dependents + 1);
     }
 }
